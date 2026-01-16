@@ -38,6 +38,7 @@ public class StackGameManager : MonoBehaviour
 
     [Header("UI")]
     public TMP_Text scoreText;
+    public TMP_Text gameOverScoreText; // Score shown on Game Over screen
     public GameObject gameOverPanel;
     public GameObject menuPanel; // A specific panel for "Tap to Start"
 
@@ -425,7 +426,11 @@ public class StackGameManager : MonoBehaviour
         
         // UI Handling
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
-        if (scoreText != null) scoreText.gameObject.SetActive(false); // Hide in-game score so user focuses on Game Over panel
+        if (scoreText != null) scoreText.gameObject.SetActive(false); // Hide in-game score
+        
+        // Update Game Over Score display if assigned
+        if (gameOverScoreText != null)
+            gameOverScoreText.text = score.ToString();
     }
     public void RestartGame()
     {
@@ -454,27 +459,28 @@ public class ComboEffect : MonoBehaviour
         Renderer r = GetComponent<Renderer>();
         if (r != null)
         {
-            mat = r.material;
-            color = mat.color;
-        }
-        else
-        {
-            // Failsafe
-            Destroy(gameObject);
+            // Ensure we use a transparent shader
+            // Note: Creating a new material instance to avoid leaking
+            mat = r.material; 
+            if(mat.shader.name != "Sprites/Default") 
+                mat.shader = Shader.Find("Sprites/Default");
+                
+            color = new Color(1f, 1f, 1f, 0.6f); // Start slightly less opaque
+            mat.color = color;
         }
         
-        Destroy(gameObject, 1.0f);
+        Destroy(gameObject, 0.4f); // Shorter lifetime (was 1.0f)
     }
 
     void Update()
     {
-        // Expand X and Z only
-        transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 5.0f;
+        // Expand: Slower expansion
+        transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 2.0f; // Was 5.0f
         
-        // Fade out
+        // Fade out: Faster fade
         if (mat != null)
         {
-            color.a -= Time.deltaTime * 1.5f; // Fade faster than life
+            color.a -= Time.deltaTime * 2.0f; 
             mat.color = color;
         }
     }
