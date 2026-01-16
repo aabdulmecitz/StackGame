@@ -70,20 +70,22 @@ public class StackGameManager : MonoBehaviour
     void Start()
     {
         mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
+            mainCamera.backgroundColor = new Color(0.8f, 0.8f, 0.8f); // Neutral start color
+        }
         currentSpeed = movementSpeed;
         
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (menuPanel != null) menuPanel.SetActive(true);
-        if (scoreText != null) scoreText.text = "0";
-
-        // DEBUG: Check if UI is assigned
-        if(scoreText == null) Debug.LogError("HATA: ScoreText (TMP) Script'e atanmamış!");
-        else Debug.Log("ScoreText atalı ve rengi: " + scoreText.color);
         
-        if(gameOverPanel == null) Debug.LogError("HATA: GameOverPanel Script'e atanmamış!");
-        if (gameOverPanel != null) gameOverPanel.SetActive(false);
-        if (menuPanel != null) menuPanel.SetActive(true);
-        if (scoreText != null) scoreText.text = "0";
+        // Hide score initially (will show when game starts)
+        if (scoreText != null) 
+        {
+            scoreText.text = "0";
+            scoreText.gameObject.SetActive(false);
+        }
 
         previousBlock = CreateBlock(new Vector3(0, -0.5f, 0), new Vector3(5, 1, 5));
         blockStack.Add(previousBlock); 
