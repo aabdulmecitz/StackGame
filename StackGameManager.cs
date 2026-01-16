@@ -97,6 +97,8 @@ public class StackGameManager : MonoBehaviour
 
         if(mainCamera != null)
             cameraTargetPosition = mainCamera.transform.position;
+            
+        CreateGround();
     }
 
     // ... (Update and other methods) ...
@@ -108,6 +110,8 @@ public class StackGameManager : MonoBehaviour
     {
         if (isGameOver)
         {
+            DoGameOverZoom(); // Correctly placed inside loop
+
             if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().name);
@@ -406,15 +410,71 @@ public class StackGameManager : MonoBehaviour
         // Update Game Over Score display
         if (gameOverScoreText != null) gameOverScoreText.text = score.ToString();
         
-        // Show Game Over Panel
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
         
         // Hide In-Game Score
         if (scoreText != null) scoreText.gameObject.SetActive(false);
     }
+
     public void RestartGame()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    private void DoGameOverZoom()
+    {
+         if (mainCamera == null) return;
+
+         // Execute only once to set target, or continuously if dynamic
+         float stackHeight = blockStack.Count; 
+         if(stackHeight < 5) stackHeight = 5; // Min height to frame
+
+         // Calculate center of the stack
+         float centerY = stackHeight / 2.0f;
+         
+         // Current camera view direction
+         Vector3 direction = mainCamera.transform.forward;
+         
+         // Ideally we look at the center of the stack
+         Vector3 targetLookAt = new Vector3(0, centerY, 0);
+
+         // We want to move back away from that center
+         // Distance depends on height. 
+         // Adjust multiplier (1.5f) to control how much "zoom" 
+         float distance = 15f + (stackHeight * 1.5f); 
+         // Clamp max distance to avoid "stick" look
+         if(distance > 60f) distance = 60f; 
+
+         // Target position is Center - (Forward * Distance)
+         // But we want to keep the "Classic Stack" rotation roughly. 
+         // Actually simpler: Just move back along current vector relative to center.
+         
+         Vector3 desiredPos = targetLookAt - (mainCamera.transform.forward * distance);
+         
+         // Smoothly move there
+         mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, desiredPos, Time.deltaTime * 1.0f);
+    }
+
+    private void CreateGround()
+    {
+        // Create a large ground plane
+        GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        ground.name = "Ground";
+        
+        // Position it at the bottom of the first block
+        // First block center Y = -0.5, Scale Y = 1 => Bottom Y = -1.0
+        ground.transform.position = new Vector3(0, -1.0f, 0);
+        
+        // Scale it to be essentially infinite for the view
+        ground.transform.localScale = new Vector3(100, 1, 100);
+        
+        Renderer r = ground.GetComponent<Renderer>();
+        if (r != null)
+        {
+            // Use standard material or unlit, slightly different color than background to stand out
+            r.material = new Material(Shader.Find("Standard"));
+            r.material.color = new Color(0.15f, 0.15f, 0.15f); // Dark Grey Ground
+        }
     }
 }
 
