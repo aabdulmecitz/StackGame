@@ -19,7 +19,7 @@ public class StackGameManager : MonoBehaviour
 
     [Header("Visuals")]
     public float cameraSmoothSpeed = 2.0f;
-    public float colorChangeSpeed = 0.05f;
+    public float colorChangeSpeed = 0.005f; // Decreased from 0.05f for smoother gradient
     public Material stackMat;
 
     [Header("Audio")]
@@ -174,22 +174,7 @@ public class StackGameManager : MonoBehaviour
         currentHue += colorChangeSpeed;
         if (currentHue > 1.0f) currentHue -= 1.0f;
 
-        if (blockStack.Count > MAX_VISIBLE_STACK)
-        {
-            currentBlock = blockStack[0];
-            blockStack.RemoveAt(0);
-
-            currentBlock.position = spawnPos;
-            currentBlock.localScale = currentBlockSize;
-            currentBlock.rotation = Quaternion.identity;
-            currentBlock.gameObject.GetComponent<Renderer>().enabled = true;
-            
-            UpdateBlockColor(currentBlock);
-        }
-        else
-        {
-            currentBlock = CreateBlock(spawnPos, currentBlockSize);
-        }
+        currentBlock = CreateBlock(spawnPos, currentBlockSize);
     }
 
     private void MoveBlock()
@@ -401,11 +386,10 @@ public class StackGameManager : MonoBehaviour
          float distance = 12f + (stackHeight * 0.5f);
          if(distance > 35f) distance = 35f;
 
-         Vector3 topPoint = new Vector3(0, stackHeight, 0);
-         Vector3 basePos = topPoint - (mainCamera.transform.forward * distance);
+         float targetY = Mathf.Min(stackHeight / 2.0f, 18.5f);
+         Vector3 centerPoint = new Vector3(0, targetY, 0);
          
-         float shiftDown = distance * 0.4f;
-         basePos.y -= shiftDown;
+         Vector3 basePos = centerPoint - (mainCamera.transform.forward * distance);
          
          mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, basePos, Time.deltaTime * 1.0f);
     }
@@ -428,7 +412,6 @@ public class StackGameManager : MonoBehaviour
     }
 }
 
-// Helper classes re-added to fix reference error
 public class RubbleControl : MonoBehaviour
 {
     void Update()
