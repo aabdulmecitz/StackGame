@@ -377,6 +377,8 @@ public class StackGameManager : MonoBehaviour
         }
     }
 
+    private Renderer groundRenderer; // To update color dynamically
+
     void UpdateVisuals()
     {
         if (mainCamera == null) return;
@@ -384,8 +386,16 @@ public class StackGameManager : MonoBehaviour
         Color targetColor = Color.HSVToRGB(currentHue, 0.2f, 0.9f); 
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
-        // Fog removed as requested
-        RenderSettings.fog = false;
+        // REMOVED: Do NOT match ground color to sky. 
+        // We want the ground to be its own color (White/Gray) to receive shadows.
+        // The Fog will handle the blending into the sky.
+
+        // Linear Fog gives us a "Safe Zone" where the ground is clearly White
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogStartDistance = 20f + (blockStack.Count * 0.5f); // Fog pushes away as we go up
+        RenderSettings.fogEndDistance = 80f + (blockStack.Count * 0.5f);
+        RenderSettings.fogColor = mainCamera.backgroundColor; // Fog color matches sky = Seamless Horizon
     }
 
     void UpdateCamera()
@@ -466,17 +476,21 @@ public class StackGameManager : MonoBehaviour
         ground.transform.position = new Vector3(0, -1.0f, 0);
         
         // Scale it to be essentially infinite for the view
-        ground.transform.localScale = new Vector3(100, 1, 100);
+        ground.transform.localScale = new Vector3(1000, 1, 1000);
         
         Renderer r = ground.GetComponent<Renderer>();
         if (r != null)
         {
-            // Use standard material or unlit, slightly different color than background to stand out
-            r.material = new Material(Shader.Find("Standard"));
-            r.material.color = new Color(0.15f, 0.15f, 0.15f); // Dark Grey Ground
+            groundRenderer = r; // Assign to class variable for dynamic updating
+
+            // Use the default material (Lit) which comes with the primitive. 
+            // Do NOT try to find "Standard" shader as it might be stripped or fail, causing Pink color.
+            
+            // Just set colour to White to catch shadows.
+            r.material.color = Color.white; 
         }
     }
-}
+} // End of StackGameManager
 
 // ---- HELPER CLASSES (Can be in same file) ----
 
