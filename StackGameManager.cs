@@ -38,7 +38,6 @@ public class StackGameManager : MonoBehaviour
 
     [Header("UI")]
     public TMP_Text scoreText;
-    public TMP_Text highScoreText;
     public GameObject gameOverPanel;
     public GameObject menuPanel; // A specific panel for "Tap to Start"
 
@@ -64,33 +63,64 @@ public class StackGameManager : MonoBehaviour
     private Camera mainCamera;
     private Vector3 cameraTargetPosition;
 
+    // ... (rest of the file remains same, replacing specific methods) ...
+
     void Start()
     {
         mainCamera = Camera.main;
         currentSpeed = movementSpeed;
         
-        // Setup UI
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (menuPanel != null) menuPanel.SetActive(true);
         if (scoreText != null) scoreText.text = "0";
 
-        if (highScoreText != null)
-            highScoreText.text = "BEST: " + PlayerPrefs.GetInt("HighScore", 0);
-
-        // Initialize Base Block
         previousBlock = CreateBlock(new Vector3(0, -0.5f, 0), new Vector3(5, 1, 5));
         blockStack.Add(previousBlock); 
         
         currentBlockSize = new Vector3(5, 1, 5);
         
-        // Randomize Start Color
         currentHue = Random.Range(0f, 1f);
         UpdateBlockColor(previousBlock);
 
-        // Camera Init
         if(mainCamera != null)
             cameraTargetPosition = mainCamera.transform.position;
+
+        // Create Background Particles
+        CreateBackgroundParticles();
     }
+
+    // ... (Update and other methods) ...
+
+
+
+    // New Background Elements
+    private void CreateBackgroundParticles()
+    {
+        GameObject bgSys = new GameObject("BackgroundStars");
+        ParticleSystem ps = bgSys.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.loop = true;
+        main.startLifetime = 10f;
+        main.startSpeed = 2f;
+        main.startSize = 0.5f;
+        main.maxParticles = 100;
+        main.simulationSpace = ParticleSystemSimulationSpace.World; // Move relative to world
+
+        var emission = ps.emission;
+        emission.rateOverTime = 10;
+
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(30, 1, 30); // Spread out
+        
+        // Position it below camera initially, or around
+        bgSys.transform.position = new Vector3(0, -10, 10);
+        bgSys.transform.rotation = Quaternion.Euler(-90, 0, 0); // Emit upwards
+        
+        var renderer = bgSys.GetComponent<ParticleSystemRenderer>();
+        renderer.material = new Material(Shader.Find("Sprites/Default"));
+    }
+
 
     void Update()
     {
@@ -332,23 +362,24 @@ public class StackGameManager : MonoBehaviour
     }
     
     // Simple visual flare for combo
+    // Simple visual flare for combo
     private void CreateComboEffect(Vector3 pos, Vector3 scale)
     {
-        GameObject effect = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        effect.transform.position = pos;
+        GameObject pObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        pObj.transform.position = pos;
         
-        // Slightly larger than block
-        effect.transform.localScale = new Vector3(scale.x + 0.1f, scale.y + 0.1f, scale.z + 0.1f);
+        // Make it slightly larger than the block and very thin
+        pObj.transform.localScale = new Vector3(scale.x, 0.1f, scale.z);
         
-        // Remove collider
-        Destroy(effect.GetComponent<Collider>());
-        
-        Renderer r = effect.GetComponent<Renderer>();
-        r.material = new Material(Shader.Find("Mobile/Particles/Additive")); // Or standard
-        r.material.color = Color.white;
-        
-        // Animation helper
-        effect.AddComponent<ComboEffect>();
+        Renderer r = pObj.GetComponent<Renderer>();
+        if(r != null)
+        {
+            r.material = new Material(Shader.Find("Sprites/Default"));
+            r.material.color = new Color(1f, 1f, 1f, 0.8f); // Semi-transparent white
+        }
+
+        // Add the effect (expanding and fading)
+        pObj.AddComponent<ComboEffect>();
     }
 
     void PlaySound(AudioClip clip, float pitch)
@@ -367,9 +398,8 @@ public class StackGameManager : MonoBehaviour
         Color targetColor = Color.HSVToRGB(currentHue, 0.2f, 0.9f); 
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
-        RenderSettings.fog = true;
-        RenderSettings.fogColor = mainCamera.backgroundColor;
-        RenderSettings.fogDensity = 0.05f; 
+        // Fog removed as requested
+        RenderSettings.fog = false;
     }
 
     void UpdateCamera()
@@ -392,7 +422,6 @@ public class StackGameManager : MonoBehaviour
         }
 
         if (scoreText != null) scoreText.text = score.ToString();
-        if (highScoreText != null) highScoreText.text = "BEST: " + best.ToString();
         
         // UI Handling
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
@@ -413,19 +442,36 @@ public class RubbleControl : MonoBehaviour
 
 public class ComboEffect : MonoBehaviour
 {
-    private Color c = Color.white;
-    private Renderer r;
-    void Start() { 
-        r = GetComponent<Renderer>();
+    private Material mat;
+    private Color color;
+
+    void Start()
+    {
+        Renderer r = GetComponent<Renderer>();
+        if (r != null)
+        {
+            mat = r.material;
+            color = mat.color;
+        }
+        else
+        {
+            // Failsafe
+            Destroy(gameObject);
+        }
+        
         Destroy(gameObject, 1.0f);
     }
+
     void Update()
     {
-        // Expand and Fade
-        transform.localScale += Vector3.one * Time.deltaTime * 2.0f;
-        if(r != null) {
-            c.a -= Time.deltaTime;
-            r.material.color = c; // Note: shader must support transparency
+        // Expand X and Z only
+        transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 5.0f;
+        
+        // Fade out
+        if (mat != null)
+        {
+            color.a -= Time.deltaTime * 1.5f; // Fade faster than life
+            mat.color = color;
         }
     }
 }
