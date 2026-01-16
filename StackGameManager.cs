@@ -1,15 +1,7 @@
-/*
- * Copyright (c) 2026 Ahmet [Last Name]
- * All rights reserved.
- * 
- * This code is proprietary and confidential. 
- * Unauthorized copying of this file, via any medium is strictly prohibited.
- */
-
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using TMPro; // TextMeshPro namespace
+using TMPro;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -28,22 +20,20 @@ public class StackGameManager : MonoBehaviour
     [Header("Visuals")]
     public float cameraSmoothSpeed = 2.0f;
     public float colorChangeSpeed = 0.05f;
-    public Material stackMat; // Assign a material with "Standard" shader or similar for coloring
+    public Material stackMat;
 
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip placeClip;
     public AudioClip gameOverClip;
-    public AudioClip comboClip; // Optional, or just use placeClip with high pitch
+    public AudioClip comboClip;
 
-    [Header("UI")]
     [Header("UI")]
     public TMP_Text scoreText;
     public TMP_Text gameOverScoreText; 
     public GameObject gameOverPanel;
     public GameObject menuPanel;
 
-    // State
     private Transform currentBlock;
     private Transform previousBlock;
     
@@ -64,8 +54,7 @@ public class StackGameManager : MonoBehaviour
 
     private Camera mainCamera;
     private Vector3 cameraTargetPosition;
-
-    // ... (rest of the file remains same, replacing specific methods) ...
+    private Renderer groundRenderer;
 
     void Start()
     {
@@ -73,14 +62,13 @@ public class StackGameManager : MonoBehaviour
         if (mainCamera != null)
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
-            mainCamera.backgroundColor = new Color(0.8f, 0.8f, 0.8f); // Neutral start color
+            mainCamera.backgroundColor = new Color(0.8f, 0.8f, 0.8f);
         }
         currentSpeed = movementSpeed;
         
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (menuPanel != null) menuPanel.SetActive(true);
         
-        // Hide score initially (will show when game starts)
         if (scoreText != null) 
         {
             scoreText.text = "0";
@@ -101,16 +89,11 @@ public class StackGameManager : MonoBehaviour
         CreateGround();
     }
 
-    // ... (Update and other methods) ...
-
-
-
-    // Debug code removed ("}") deleted here to fix compilation error
     void Update()
     {
         if (isGameOver)
         {
-            DoGameOverZoom(); // Correctly placed inside loop
+            DoGameOverZoom();
 
             if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
@@ -121,7 +104,6 @@ public class StackGameManager : MonoBehaviour
 
         if (!isGameActive)
         {
-            // Waiting for start
             if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
                 isGameActive = true;
@@ -132,7 +114,6 @@ public class StackGameManager : MonoBehaviour
         }
         else
         {
-            // Gameplay
             if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
             {
                 if (PlaceBlock())
@@ -158,11 +139,10 @@ public class StackGameManager : MonoBehaviour
         go.transform.position = position;
         go.transform.localScale = scale;
         
-        // Assign material for batching/shadows if needed, or just default
         Renderer rend = go.GetComponent<Renderer>();
         if (stackMat != null) rend.material = stackMat;
         
-        UpdateBlockColor(go.transform); // Apply current game color
+        UpdateBlockColor(go.transform);
 
         return go.transform;
     }
@@ -172,7 +152,6 @@ public class StackGameManager : MonoBehaviour
         Renderer rend = t.GetComponent<Renderer>();
         if (rend != null)
         {
-            // Use HSV for nice transitions
             currentBlockColor = Color.HSVToRGB(currentHue, 0.6f, 1.0f);
             rend.material.color = currentBlockColor;
         }
@@ -192,11 +171,9 @@ public class StackGameManager : MonoBehaviour
         if (isMovingOnX) spawnPos.x = -bounds; 
         else             spawnPos.z = -bounds;
 
-        // Visual change first
         currentHue += colorChangeSpeed;
         if (currentHue > 1.0f) currentHue -= 1.0f;
 
-        // Pooling Check
         if (blockStack.Count > MAX_VISIBLE_STACK)
         {
             currentBlock = blockStack[0];
@@ -205,7 +182,7 @@ public class StackGameManager : MonoBehaviour
             currentBlock.position = spawnPos;
             currentBlock.localScale = currentBlockSize;
             currentBlock.rotation = Quaternion.identity;
-            currentBlock.gameObject.GetComponent<Renderer>().enabled = true; // Ensure visible
+            currentBlock.gameObject.GetComponent<Renderer>().enabled = true;
             
             UpdateBlockColor(currentBlock);
         }
@@ -245,7 +222,6 @@ public class StackGameManager : MonoBehaviour
 
         float absDelta = Mathf.Abs(delta);
 
-        // 1. Miss
         if (absDelta >= size)
         {
             current.gameObject.AddComponent<Rigidbody>();
@@ -253,7 +229,6 @@ public class StackGameManager : MonoBehaviour
             return false; 
         }
 
-        // 2. Perfect Hit
         if (absDelta <= perfectTolerance)
         {
             comboCount++;
@@ -263,11 +238,8 @@ public class StackGameManager : MonoBehaviour
             
             current.position = snappedPos;
             
-            // Visual + Audio effects
-            PlaySound(placeClip, 1.0f + (comboCount * 0.1f)); // Pitch increases
+            PlaySound(placeClip, 1.0f + (comboCount * 0.1f));
             CreateComboEffect(current.position, current.localScale);
-            
-            // Allow stack to grow slightly on perfect? (Optional, kept simple here)
         }
         else
         {
@@ -341,30 +313,25 @@ public class StackGameManager : MonoBehaviour
         Rigidbody rb = rubble.AddComponent<Rigidbody>();
         rb.mass = 1f;
 
-        // Shrink rubble over time script
         rubble.AddComponent<RubbleControl>();
 
         Destroy(rubble, 2.0f);
     }
     
-    // Simple visual flare for combo
-    // Simple visual flare for combo
     private void CreateComboEffect(Vector3 pos, Vector3 scale)
     {
         GameObject pObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         pObj.transform.position = pos;
         
-        // Make it slightly larger than the block and very thin
         pObj.transform.localScale = new Vector3(scale.x, 0.1f, scale.z);
         
         Renderer r = pObj.GetComponent<Renderer>();
         if(r != null)
         {
             r.material = new Material(Shader.Find("Sprites/Default"));
-            r.material.color = new Color(1f, 1f, 1f, 0.8f); // Semi-transparent white
+            r.material.color = new Color(1f, 1f, 1f, 0.8f);
         }
 
-        // Add the effect (expanding and fading)
         pObj.AddComponent<ComboEffect>();
     }
 
@@ -377,8 +344,6 @@ public class StackGameManager : MonoBehaviour
         }
     }
 
-    private Renderer groundRenderer; // To update color dynamically
-
     void UpdateVisuals()
     {
         if (mainCamera == null) return;
@@ -386,19 +351,12 @@ public class StackGameManager : MonoBehaviour
         Color targetColor = Color.HSVToRGB(currentHue, 0.2f, 0.9f); 
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
-        // REMOVED: Do NOT match ground color to sky. 
-        // We want the ground to be its own color (White/Gray) to receive shadows.
-        // The Fog will handle the blending into the sky.
-
-        // Linear Fog gives us a "Safe Zone" where the ground is clearly White
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = 20f + (blockStack.Count * 0.5f); // Fog pushes away as we go up
+        RenderSettings.fogStartDistance = 20f + (blockStack.Count * 0.5f);
         RenderSettings.fogEndDistance = 80f + (blockStack.Count * 0.5f);
-        RenderSettings.fogColor = mainCamera.backgroundColor; // Fog color matches sky = Seamless Horizon
+        RenderSettings.fogColor = mainCamera.backgroundColor;
 
-        // AUTO-FIX: Increase Shadow Distance so shadows don't vanish when we zoom out
-        // Default is usually 40 or 150. We pump it up to ensure visibility at max zoom (45 distance).
         if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
     }
 
@@ -421,12 +379,10 @@ public class StackGameManager : MonoBehaviour
             best = score;
         }
 
-        // Update Game Over Score display
         if (gameOverScoreText != null) gameOverScoreText.text = score.ToString();
         
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
         
-        // Hide In-Game Score
         if (scoreText != null) scoreText.gameObject.SetActive(false);
     }
 
@@ -439,70 +395,44 @@ public class StackGameManager : MonoBehaviour
     {
          if (mainCamera == null) return;
 
-         // Execute only once to set target, or continuously if dynamic
          float stackHeight = blockStack.Count; 
-         if(stackHeight < 5) stackHeight = 5; // Min height to frame
+         if(stackHeight < 5) stackHeight = 5;
 
-         // Calculate center of the stack
-         float centerY = stackHeight / 2.0f;
-         
-         // Current camera view direction
-         Vector3 direction = mainCamera.transform.forward;
-         
-         // Ideally we look at the center of the stack
-         Vector3 targetLookAt = new Vector3(0, centerY, 0);
+         float distance = 12f + (stackHeight * 0.5f);
+         if(distance > 35f) distance = 35f;
 
-         // We want to move back away from that center
-         // Distance depends on height. 
-         // Aggressively reduced multiplier (was 0.8f) to keep it closer
-         float distance = 10f + (stackHeight * 0.4f); 
-         // Clamp max distance severely to avoid "ant view". Max 35.
-         if(distance > 35f) distance = 35f; 
-
-         // Target position is Center - (Forward * Distance)
-         // But we want to keep the "Classic Stack" rotation roughly. 
-         // Actually simpler: Just move back along current vector relative to center.
+         Vector3 topPoint = new Vector3(0, stackHeight, 0);
+         Vector3 basePos = topPoint - (mainCamera.transform.forward * distance);
          
-         Vector3 desiredPos = targetLookAt - (mainCamera.transform.forward * distance);
+         float shiftDown = distance * 0.4f;
+         basePos.y -= shiftDown;
          
-         // Smoothly move there
-         mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, desiredPos, Time.deltaTime * 1.0f);
+         mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, basePos, Time.deltaTime * 1.0f);
     }
 
     private void CreateGround()
     {
-        // Create a large ground plane
         GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
         ground.name = "Ground";
         
-        // Position it at the bottom of the first block
-        // First block center Y = -0.5, Scale Y = 1 => Bottom Y = -1.0
         ground.transform.position = new Vector3(0, -1.0f, 0);
         
-        // Scale it to be essentially infinite for the view
         ground.transform.localScale = new Vector3(1000, 1, 1000);
         
         Renderer r = ground.GetComponent<Renderer>();
         if (r != null)
         {
-            groundRenderer = r; // Assign to class variable for dynamic updating
-
-            // Use the default material (Lit) which comes with the primitive. 
-            // Do NOT try to find "Standard" shader as it might be stripped or fail, causing Pink color.
-            
-            // Just set colour to White to catch shadows.
+            groundRenderer = r;
             r.material.color = Color.white; 
         }
     }
-} // End of StackGameManager
+}
 
-// ---- HELPER CLASSES (Can be in same file) ----
-
+// Helper classes re-added to fix reference error
 public class RubbleControl : MonoBehaviour
 {
     void Update()
     {
-        // Shrink over time
         transform.localScale = Vector3.Lerp(transform.localScale, Vector3.zero, Time.deltaTime * 1.5f);
     }
 }
@@ -517,15 +447,14 @@ public class ComboEffect : MonoBehaviour
         Renderer r = GetComponent<Renderer>();
         if (r != null)
         {
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // Disable shadows
-            r.receiveShadows = false; // Disable receiving shadows
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; 
+            r.receiveShadows = false; 
 
             mat = r.material; 
-            // Force Unlit transparent shader
             if(mat.shader.name != "Sprites/Default") 
                 mat.shader = Shader.Find("Sprites/Default");
                 
-            color = new Color(1f, 1f, 1f, 0.4f); // Start more transparent to avoid "flash"
+            color = new Color(1f, 1f, 1f, 0.4f); 
             mat.color = color;
         }
         
@@ -534,10 +463,8 @@ public class ComboEffect : MonoBehaviour
 
     void Update()
     {
-        // Expand
         transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 1.5f; 
         
-        // Fade out
         if (mat != null)
         {
             color.a -= Time.deltaTime; 
