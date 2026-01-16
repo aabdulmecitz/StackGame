@@ -434,28 +434,31 @@ public class ComboEffect : MonoBehaviour
         Renderer r = GetComponent<Renderer>();
         if (r != null)
         {
-            // Ensure we use a transparent shader
-            // Note: Creating a new material instance to avoid leaking
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // Disable shadows
+            r.receiveShadows = false; // Disable receiving shadows
+
             mat = r.material; 
+            // Force Unlit transparent shader
             if(mat.shader.name != "Sprites/Default") 
                 mat.shader = Shader.Find("Sprites/Default");
                 
-            color = new Color(1f, 1f, 1f, 0.6f); // Start slightly less opaque
+            color = new Color(1f, 1f, 1f, 0.4f); // Start more transparent to avoid "flash"
             mat.color = color;
         }
         
-        Destroy(gameObject, 0.4f); // Shorter lifetime (was 1.0f)
+        Destroy(gameObject, 0.5f);
     }
 
     void Update()
     {
-        // Expand: Slower expansion
-        transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 2.0f; // Was 5.0f
+        // Expand
+        transform.localScale += new Vector3(1, 0, 1) * Time.deltaTime * 1.5f; 
         
-        // Fade out: Faster fade
+        // Fade out
         if (mat != null)
         {
-            color.a -= Time.deltaTime * 2.0f; 
+            color.a -= Time.deltaTime; 
+            if(color.a < 0) color.a = 0;
             mat.color = color;
         }
     }
