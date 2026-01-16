@@ -396,6 +396,10 @@ public class StackGameManager : MonoBehaviour
         RenderSettings.fogStartDistance = 20f + (blockStack.Count * 0.5f); // Fog pushes away as we go up
         RenderSettings.fogEndDistance = 80f + (blockStack.Count * 0.5f);
         RenderSettings.fogColor = mainCamera.backgroundColor; // Fog color matches sky = Seamless Horizon
+
+        // AUTO-FIX: Increase Shadow Distance so shadows don't vanish when we zoom out
+        // Default is usually 40 or 150. We pump it up to ensure visibility at max zoom (45 distance).
+        if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
     }
 
     void UpdateCamera()
@@ -450,10 +454,10 @@ public class StackGameManager : MonoBehaviour
 
          // We want to move back away from that center
          // Distance depends on height. 
-         // Adjust multiplier (1.5f) to control how much "zoom" 
-         float distance = 15f + (stackHeight * 1.5f); 
-         // Clamp max distance to avoid "stick" look
-         if(distance > 60f) distance = 60f; 
+         // Aggressively reduced multiplier (was 0.8f) to keep it closer
+         float distance = 10f + (stackHeight * 0.4f); 
+         // Clamp max distance severely to avoid "ant view". Max 35.
+         if(distance > 35f) distance = 35f; 
 
          // Target position is Center - (Forward * Distance)
          // But we want to keep the "Classic Stack" rotation roughly. 
