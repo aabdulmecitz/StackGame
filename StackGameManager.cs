@@ -427,6 +427,10 @@ public class StackGameManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
         if (scoreText != null) scoreText.gameObject.SetActive(false); // Hide in-game score so user focuses on Game Over panel
     }
+    public void RestartGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
 }
 
 // ---- HELPER CLASSES (Can be in same file) ----
