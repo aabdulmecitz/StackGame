@@ -8,18 +8,14 @@ using System.Collections.Generic;
 public class StackGameManager : MonoBehaviour
 {
     [Header("Game Settings")]
-    [Tooltip("Base movement speed of the blocks.")]
     public float movementSpeed = 5.0f;
-    [Tooltip("Speed multiplier applied each stack.")]
     public float speedGain = 0.1f;
-    [Tooltip("Maximum distance blocks travel from center.")]
     public float bounds = 5.0f;
-    [Tooltip("Difference allowed to snap perfectly.")]
     public float perfectTolerance = 0.1f;
 
     [Header("Visuals")]
     public float cameraSmoothSpeed = 2.0f;
-    public float colorChangeSpeed = 0.005f; // Decreased from 0.05f for smoother gradient
+    public float colorChangeSpeed = 0.005f;
     public Material stackMat;
     public Material skyboxMaterial; 
 
@@ -66,16 +62,12 @@ public class StackGameManager : MonoBehaviour
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = new Color(0.8f, 0.8f, 0.8f);
             
-            // FIX: Ensure no Skybox interferes with the Fog blending in Build
             RenderSettings.skybox = null; 
         }
         
-        // FIX: Build might lack lighting/ambient setup, breaking the Fog blent.
-        // 1. Force Flat Ambient Light so Ground isn't pitch black or weirdly lit
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.7f, 0.7f, 0.7f); // Bright enough grey
+        RenderSettings.ambientLight = new Color(0.7f, 0.7f, 0.7f);
 
-        // 2. Ensure we have a Main Light
         if (FindFirstObjectByType<Light>() == null)
         {
              GameObject lightGo = new GameObject("MainLight");
@@ -107,9 +99,6 @@ public class StackGameManager : MonoBehaviour
         if(mainCamera != null)
             cameraTargetPosition = mainCamera.transform.position;
             
-        // FIX: URP Volume Conflict
-        // Sahnede bir "Global Volume" varsa bizim kod tüm ayarları yapsa da o üzerine biner.
-        // Bu yüzden oyundaki tüm Volume sistemlerini başlangıçta kapatıyoruz.
         foreach (var v in FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None))
         {
             v.enabled = false;
@@ -175,7 +164,6 @@ public class StackGameManager : MonoBehaviour
         }
         else
         {
-            // FIX: Try URP Shader first, then others.
             Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
             if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
             if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
@@ -336,15 +324,12 @@ public class StackGameManager : MonoBehaviour
         Renderer r = rubble.GetComponent<Renderer>();
         if(r != null) 
         {
-            // FIX: Use the same material as the main blocks if available.
-            // This prevents "Pink" issues in Editor if Mobile/Diffuse is incompatible.
             if (stackMat != null)
             {
                 r.material = new Material(stackMat);
             }
             else
             {
-                // FIX: Try URP Shader first, then others.
                 Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
                 if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
                 if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
@@ -399,13 +384,15 @@ public class StackGameManager : MonoBehaviour
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
         
-        // Dinamik Sis Yoğunluğu:
-        // Oyun başında (0 blok) 0.01f ile başlar (Çok hafif bulanıklık).
-        // Blok ekledikçe her blok başına 0.001f artar.
-        // Maksimum 0.06f değerinde sabitlenir (Kuleyi tamamen yutmaması için).
         float baseFog = 0.01f;
         float dynamicFog = baseFog + (blockStack.Count * 0.001f);
-        RenderSettings.fogDensity = Mathf.Min(dynamicFog, 0.06f);
+        float density = Mathf.Min(dynamicFog, 0.06f);
+
+        Vector3 towerCenter = new Vector3(0, mainCamera.transform.position.y, 0);
+        float currentDist = Vector3.Distance(mainCamera.transform.position, towerCenter);
+        float distanceWeight = 15.0f / Mathf.Max(currentDist, 15.0f);
+        
+        RenderSettings.fogDensity = density * distanceWeight;
         
         RenderSettings.fogColor = mainCamera.backgroundColor;
 
@@ -416,18 +403,15 @@ public class StackGameManager : MonoBehaviour
             
             Color bg = mainCamera.backgroundColor;
             
-            // "Procedural Skybox" ve diğerleri için tüm renk kanallarını eşitle:
             if (skyboxMaterial.HasProperty("_SkyTint")) skyboxMaterial.SetColor("_SkyTint", bg);
             if (skyboxMaterial.HasProperty("_GroundColor")) skyboxMaterial.SetColor("_GroundColor", bg);
             if (skyboxMaterial.HasProperty("_Color")) skyboxMaterial.SetColor("_Color", bg);
             if (skyboxMaterial.HasProperty("_BaseColor")) skyboxMaterial.SetColor("_BaseColor", bg);
             
-            // Güneşi kapatmak için (Sonsuz boşluk hissi):
             if (skyboxMaterial.HasProperty("_SunSize")) skyboxMaterial.SetFloat("_SunSize", 0);
         }
 
         float stackH = (float)blockStack.Count;
-        // Kamera görüş mesafesini geniş tutuyoruz çünkü sis zaten her şeyi kapatacak.
         mainCamera.farClipPlane = 150.0f + (stackH * 0.5f);
         
         if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
@@ -496,18 +480,12 @@ public class StackGameManager : MonoBehaviour
         {
             groundRenderer = r;
             
-            // FIX: Even if user assigned a material, we MUST enforce a shader that supports Fog in build.
-            // "Standard" shader often breaks Fog in builds if not properly referenced.
-            // We clone their material but swap the shader to "Mobile/Diffuse".
-            
-            // FIX: Use assigned material if exists. Move shader fallback to ELSE block.
             if (stackMat != null)
             {
                 r.material = new Material(stackMat);
             }
             else
             {
-                // If no material assigned, try to find a valid shader.
                 Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
                 if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
                 if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
