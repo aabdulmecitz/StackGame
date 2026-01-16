@@ -37,10 +37,11 @@ public class StackGameManager : MonoBehaviour
     public AudioClip comboClip; // Optional, or just use placeClip with high pitch
 
     [Header("UI")]
+    [Header("UI")]
     public TMP_Text scoreText;
-    public TMP_Text gameOverScoreText; // Score shown on Game Over screen
+    public TMP_Text gameOverScoreText; 
     public GameObject gameOverPanel;
-    public GameObject menuPanel; // A specific panel for "Tap to Start"
+    public GameObject menuPanel;
 
     // State
     private Transform currentBlock;
@@ -75,6 +76,15 @@ public class StackGameManager : MonoBehaviour
         if (menuPanel != null) menuPanel.SetActive(true);
         if (scoreText != null) scoreText.text = "0";
 
+        // DEBUG: Check if UI is assigned
+        if(scoreText == null) Debug.LogError("HATA: ScoreText (TMP) Script'e atanmamış!");
+        else Debug.Log("ScoreText atalı ve rengi: " + scoreText.color);
+        
+        if(gameOverPanel == null) Debug.LogError("HATA: GameOverPanel Script'e atanmamış!");
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (menuPanel != null) menuPanel.SetActive(true);
+        if (scoreText != null) scoreText.text = "0";
+
         previousBlock = CreateBlock(new Vector3(0, -0.5f, 0), new Vector3(5, 1, 5));
         blockStack.Add(previousBlock); 
         
@@ -85,44 +95,13 @@ public class StackGameManager : MonoBehaviour
 
         if(mainCamera != null)
             cameraTargetPosition = mainCamera.transform.position;
-
-        // Create Background Particles
-        CreateBackgroundParticles();
     }
 
     // ... (Update and other methods) ...
 
 
 
-    // New Background Elements
-    private void CreateBackgroundParticles()
-    {
-        GameObject bgSys = new GameObject("BackgroundStars");
-        ParticleSystem ps = bgSys.AddComponent<ParticleSystem>();
-        var main = ps.main;
-        main.loop = true;
-        main.startLifetime = 10f;
-        main.startSpeed = 2f;
-        main.startSize = 0.5f;
-        main.maxParticles = 100;
-        main.simulationSpace = ParticleSystemSimulationSpace.World; // Move relative to world
-
-        var emission = ps.emission;
-        emission.rateOverTime = 10;
-
-        var shape = ps.shape;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(30, 1, 30); // Spread out
-        
-        // Position it below camera initially, or around
-        bgSys.transform.position = new Vector3(0, -10, 10);
-        bgSys.transform.rotation = Quaternion.Euler(-90, 0, 0); // Emit upwards
-        
-        var renderer = bgSys.GetComponent<ParticleSystemRenderer>();
-        renderer.material = new Material(Shader.Find("Sprites/Default"));
-    }
-
-
+    // Debug code removed ("}") deleted here to fix compilation error
     void Update()
     {
         if (isGameOver)
@@ -422,15 +401,11 @@ public class StackGameManager : MonoBehaviour
             best = score;
         }
 
-        if (scoreText != null) scoreText.text = score.ToString();
+        // Update Game Over Score display
+        if (gameOverScoreText != null) gameOverScoreText.text = score.ToString();
         
-        // UI Handling
+        // Show Game Over Panel
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
-        if (scoreText != null) scoreText.gameObject.SetActive(false); // Hide in-game score
-        
-        // Update Game Over Score display if assigned
-        if (gameOverScoreText != null)
-            gameOverScoreText.text = score.ToString();
     }
     public void RestartGame()
     {
