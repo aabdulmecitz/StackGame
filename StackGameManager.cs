@@ -406,6 +406,9 @@ public class StackGameManager : MonoBehaviour
         
         // Show Game Over Panel
         if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        
+        // Hide In-Game Score
+        if (scoreText != null) scoreText.gameObject.SetActive(false);
     }
     public void RestartGame()
     {
