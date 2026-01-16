@@ -1163,6 +1163,7 @@ MonoBehaviour:
   cameraSmoothSpeed: 2
   colorChangeSpeed: 0.05
   stackMat: {fileID: 2100000, guid: 4cb0acbc0a4b2d049869308e2b3bd9dd, type: 2}
+  skyboxMaterial: {fileID: 2100000, guid: ae8176e47ce5bb5459f8c0d4f1f1a26d, type: 2}
   audioSource: {fileID: 0}
   placeClip: {fileID: 0}
   gameOverClip: {fileID: 0}

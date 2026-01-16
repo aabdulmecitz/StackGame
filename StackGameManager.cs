@@ -21,6 +21,7 @@ public class StackGameManager : MonoBehaviour
     public float cameraSmoothSpeed = 2.0f;
     public float colorChangeSpeed = 0.005f; // Decreased from 0.05f for smoother gradient
     public Material stackMat;
+    public Material skyboxMaterial; 
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -55,6 +56,7 @@ public class StackGameManager : MonoBehaviour
     private Camera mainCamera;
     private Vector3 cameraTargetPosition;
     private Renderer groundRenderer;
+    private Material skyboxMat; 
 
     void Start()
     {
@@ -387,28 +389,37 @@ public class StackGameManager : MonoBehaviour
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
         RenderSettings.fog = true;
-        
-        // FIX: Switch to Exponential Squared Fog.
-        // Linear Fog often fails or looks "hard" in builds due to scaling/shader issues.
-        // Exp2 gives a smooth, high-quality thick fog that hides the horizon perfectly.
         RenderSettings.fogMode = FogMode.Linear;
-        
-        // FIX: Visual Polish - "Clear Foreground, Soft Horizon"
-        // 1. We revert to Linear because it gives us "Start" control (keep blocks clear).
-        // 2. We use 'stackHeight' to move fog up, BUT we cap it so it never reveals the far horizon edge.
-        
-        float stackHeight = (float)blockStack.Count;
-        float baseStart = 20.0f;
-        float baseEnd = 70.0f;
-        
-        // As stack goes up, push fog back slightly so main tower isn't foggy
-        // But clamp it so we don't accidentally reveal the "end of the world" (ground plane edge).
-        float offset = Mathf.Min(stackHeight * 0.5f, 30.0f); 
-        
-        RenderSettings.fogStartDistance = baseStart + offset;
-        RenderSettings.fogEndDistance = baseEnd + offset;
-
         RenderSettings.fogColor = mainCamera.backgroundColor;
+
+        // FIX: ArgumentNullException fix.
+        // Instead of searching for shader at runtime (which might fail and crash),
+        // we use the material you assign in the inspector slot.
+        if (skyboxMaterial != null)
+        {
+            if (RenderSettings.skybox != skyboxMaterial)
+                RenderSettings.skybox = skyboxMaterial;
+            
+            Color bg = mainCamera.backgroundColor;
+            
+            // Farklı Shader tipleri için renk eşitleme:
+            if (skyboxMaterial.HasProperty("_Color")) skyboxMaterial.SetColor("_Color", bg);
+            if (skyboxMaterial.HasProperty("_BaseColor")) skyboxMaterial.SetColor("_BaseColor", bg);
+            if (skyboxMaterial.HasProperty("_SkyTint")) skyboxMaterial.SetColor("_SkyTint", bg);
+            if (skyboxMaterial.HasProperty("_GroundColor")) skyboxMaterial.SetColor("_GroundColor", bg);
+        }
+        else
+        {
+            RenderSettings.skybox = null;
+        }
+
+        float stackH = (float)blockStack.Count;
+        float offset = Mathf.Min(stackH * 0.5f, 50.0f); 
+        
+        RenderSettings.fogStartDistance = 30.0f + offset;
+        RenderSettings.fogEndDistance = 80.0f + offset;
+        
+        mainCamera.farClipPlane = 120.0f + offset;
         
         if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
     }
