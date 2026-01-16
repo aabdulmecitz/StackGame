@@ -63,7 +63,26 @@ public class StackGameManager : MonoBehaviour
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = new Color(0.8f, 0.8f, 0.8f);
+            
+            // FIX: Ensure no Skybox interferes with the Fog blending in Build
+            RenderSettings.skybox = null; 
         }
+        
+        // FIX: Build might lack lighting/ambient setup, breaking the Fog blent.
+        // 1. Force Flat Ambient Light so Ground isn't pitch black or weirdly lit
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.7f, 0.7f, 0.7f); // Bright enough grey
+
+        // 2. Ensure we have a Main Light
+        if (FindFirstObjectByType<Light>() == null)
+        {
+             GameObject lightGo = new GameObject("MainLight");
+             Light l = lightGo.AddComponent<Light>();
+             l.type = LightType.Directional;
+             l.intensity = 1.0f;
+             lightGo.transform.rotation = Quaternion.Euler(50, -30, 0);
+        }
+
         currentSpeed = movementSpeed;
         
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
@@ -146,8 +165,10 @@ public class StackGameManager : MonoBehaviour
         }
         else
         {
-            // FIX: Prevent Pink Blocks in Build
-            Shader safeShader = Shader.Find("Mobile/Diffuse");
+            // FIX: Try URP Shader first, then others.
+            Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+            if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
             if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
             if (safeShader != null) rend.material.shader = safeShader;
         }
@@ -313,8 +334,10 @@ public class StackGameManager : MonoBehaviour
             }
             else
             {
-                // Fallback only if no material assigned
-                Shader safeShader = Shader.Find("Mobile/Diffuse");
+                // FIX: Try URP Shader first, then others.
+                Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
+                if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+                if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
                 if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
                 if (safeShader != null) r.material.shader = safeShader;
             }
@@ -364,11 +387,29 @@ public class StackGameManager : MonoBehaviour
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
         RenderSettings.fog = true;
+        
+        // FIX: Switch to Exponential Squared Fog.
+        // Linear Fog often fails or looks "hard" in builds due to scaling/shader issues.
+        // Exp2 gives a smooth, high-quality thick fog that hides the horizon perfectly.
         RenderSettings.fogMode = FogMode.Linear;
-        RenderSettings.fogStartDistance = 20f + (blockStack.Count * 0.5f);
-        RenderSettings.fogEndDistance = 80f + (blockStack.Count * 0.5f);
-        RenderSettings.fogColor = mainCamera.backgroundColor;
+        
+        // FIX: Visual Polish - "Clear Foreground, Soft Horizon"
+        // 1. We revert to Linear because it gives us "Start" control (keep blocks clear).
+        // 2. We use 'stackHeight' to move fog up, BUT we cap it so it never reveals the far horizon edge.
+        
+        float stackHeight = (float)blockStack.Count;
+        float baseStart = 20.0f;
+        float baseEnd = 70.0f;
+        
+        // As stack goes up, push fog back slightly so main tower isn't foggy
+        // But clamp it so we don't accidentally reveal the "end of the world" (ground plane edge).
+        float offset = Mathf.Min(stackHeight * 0.5f, 30.0f); 
+        
+        RenderSettings.fogStartDistance = baseStart + offset;
+        RenderSettings.fogEndDistance = baseEnd + offset;
 
+        RenderSettings.fogColor = mainCamera.backgroundColor;
+        
         if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
     }
 
@@ -435,20 +476,25 @@ public class StackGameManager : MonoBehaviour
         {
             groundRenderer = r;
             
-            // FIX: If user assigned a Material in Inspector, use it for Ground too!
-            // This guarantees the shader is included in the build.
+            // FIX: Even if user assigned a material, we MUST enforce a shader that supports Fog in build.
+            // "Standard" shader often breaks Fog in builds if not properly referenced.
+            // We clone their material but swap the shader to "Mobile/Diffuse".
+            
+            // FIX: Use assigned material if exists. Move shader fallback to ELSE block.
             if (stackMat != null)
             {
                 r.material = new Material(stackMat);
             }
             else
             {
-                // Fallback if no material assigned (Might be pink in build)
-                Shader safeShader = Shader.Find("Mobile/Diffuse");
+                // If no material assigned, try to find a valid shader.
+                Shader safeShader = Shader.Find("Universal Render Pipeline/Lit");
+                if (safeShader == null) safeShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+                if (safeShader == null) safeShader = Shader.Find("Mobile/Diffuse");
                 if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
                 if (safeShader != null) r.material.shader = safeShader;
             }
-                
+            
             r.material.color = Color.white; 
         }
     }

@@ -1162,7 +1162,7 @@ MonoBehaviour:
   perfectTolerance: 0.1
   cameraSmoothSpeed: 2
   colorChangeSpeed: 0.05
-  stackMat: {fileID: 0}
+  stackMat: {fileID: 2100000, guid: 4cb0acbc0a4b2d049869308e2b3bd9dd, type: 2}
   audioSource: {fileID: 0}
   placeClip: {fileID: 0}
   gameOverClip: {fileID: 0}
