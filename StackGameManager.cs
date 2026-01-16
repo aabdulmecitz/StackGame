@@ -140,7 +140,17 @@ public class StackGameManager : MonoBehaviour
         go.transform.localScale = scale;
         
         Renderer rend = go.GetComponent<Renderer>();
-        if (stackMat != null) rend.material = stackMat;
+        if (stackMat != null) 
+        {
+            rend.material = stackMat;
+        }
+        else
+        {
+            // FIX: Prevent Pink Blocks in Build
+            Shader safeShader = Shader.Find("Mobile/Diffuse");
+            if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
+            if (safeShader != null) rend.material.shader = safeShader;
+        }
         
         UpdateBlockColor(go.transform);
 
@@ -293,7 +303,24 @@ public class StackGameManager : MonoBehaviour
         rubble.transform.localScale = scale;
         
         Renderer r = rubble.GetComponent<Renderer>();
-        if(r != null) r.material.color = currentBlockColor;
+        if(r != null) 
+        {
+            // FIX: Use the same material as the main blocks if available.
+            // This prevents "Pink" issues in Editor if Mobile/Diffuse is incompatible.
+            if (stackMat != null)
+            {
+                r.material = new Material(stackMat);
+            }
+            else
+            {
+                // Fallback only if no material assigned
+                Shader safeShader = Shader.Find("Mobile/Diffuse");
+                if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
+                if (safeShader != null) r.material.shader = safeShader;
+            }
+            
+            r.material.color = currentBlockColor;
+        }
 
         Rigidbody rb = rubble.AddComponent<Rigidbody>();
         rb.mass = 1f;
@@ -407,6 +434,21 @@ public class StackGameManager : MonoBehaviour
         if (r != null)
         {
             groundRenderer = r;
+            
+            // FIX: If user assigned a Material in Inspector, use it for Ground too!
+            // This guarantees the shader is included in the build.
+            if (stackMat != null)
+            {
+                r.material = new Material(stackMat);
+            }
+            else
+            {
+                // Fallback if no material assigned (Might be pink in build)
+                Shader safeShader = Shader.Find("Mobile/Diffuse");
+                if (safeShader == null) safeShader = Shader.Find("Legacy Shaders/Diffuse");
+                if (safeShader != null) r.material.shader = safeShader;
+            }
+                
             r.material.color = Color.white; 
         }
     }
