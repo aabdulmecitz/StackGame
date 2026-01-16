@@ -107,6 +107,14 @@ public class StackGameManager : MonoBehaviour
         if(mainCamera != null)
             cameraTargetPosition = mainCamera.transform.position;
             
+        // FIX: URP Volume Conflict
+        // Sahnede bir "Global Volume" varsa bizim kod tüm ayarları yapsa da o üzerine biner.
+        // Bu yüzden oyundaki tüm Volume sistemlerini başlangıçta kapatıyoruz.
+        foreach (var v in FindObjectsByType<UnityEngine.Rendering.Volume>(FindObjectsSortMode.None))
+        {
+            v.enabled = false;
+        }
+
         CreateGround();
     }
 
@@ -389,12 +397,18 @@ public class StackGameManager : MonoBehaviour
         mainCamera.backgroundColor = Color.Lerp(mainCamera.backgroundColor, targetColor, Time.deltaTime * 0.5f);
         
         RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        
+        // Dinamik Sis Yoğunluğu:
+        // Oyun başında (0 blok) 0.01f ile başlar (Çok hafif bulanıklık).
+        // Blok ekledikçe her blok başına 0.001f artar.
+        // Maksimum 0.06f değerinde sabitlenir (Kuleyi tamamen yutmaması için).
+        float baseFog = 0.01f;
+        float dynamicFog = baseFog + (blockStack.Count * 0.001f);
+        RenderSettings.fogDensity = Mathf.Min(dynamicFog, 0.06f);
+        
         RenderSettings.fogColor = mainCamera.backgroundColor;
 
-        // FIX: ArgumentNullException fix.
-        // Instead of searching for shader at runtime (which might fail and crash),
-        // we use the material you assign in the inspector slot.
         if (skyboxMaterial != null)
         {
             if (RenderSettings.skybox != skyboxMaterial)
@@ -402,24 +416,19 @@ public class StackGameManager : MonoBehaviour
             
             Color bg = mainCamera.backgroundColor;
             
-            // Farklı Shader tipleri için renk eşitleme:
-            if (skyboxMaterial.HasProperty("_Color")) skyboxMaterial.SetColor("_Color", bg);
-            if (skyboxMaterial.HasProperty("_BaseColor")) skyboxMaterial.SetColor("_BaseColor", bg);
+            // "Procedural Skybox" ve diğerleri için tüm renk kanallarını eşitle:
             if (skyboxMaterial.HasProperty("_SkyTint")) skyboxMaterial.SetColor("_SkyTint", bg);
             if (skyboxMaterial.HasProperty("_GroundColor")) skyboxMaterial.SetColor("_GroundColor", bg);
-        }
-        else
-        {
-            RenderSettings.skybox = null;
+            if (skyboxMaterial.HasProperty("_Color")) skyboxMaterial.SetColor("_Color", bg);
+            if (skyboxMaterial.HasProperty("_BaseColor")) skyboxMaterial.SetColor("_BaseColor", bg);
+            
+            // Güneşi kapatmak için (Sonsuz boşluk hissi):
+            if (skyboxMaterial.HasProperty("_SunSize")) skyboxMaterial.SetFloat("_SunSize", 0);
         }
 
         float stackH = (float)blockStack.Count;
-        float offset = Mathf.Min(stackH * 0.5f, 50.0f); 
-        
-        RenderSettings.fogStartDistance = 30.0f + offset;
-        RenderSettings.fogEndDistance = 80.0f + offset;
-        
-        mainCamera.farClipPlane = 120.0f + offset;
+        // Kamera görüş mesafesini geniş tutuyoruz çünkü sis zaten her şeyi kapatacak.
+        mainCamera.farClipPlane = 150.0f + (stackH * 0.5f);
         
         if(QualitySettings.shadowDistance < 100) QualitySettings.shadowDistance = 120f;
     }
